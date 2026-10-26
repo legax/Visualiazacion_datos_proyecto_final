@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard de productividad estudiantil</title>
+  <style>
+    :root {
+      --navy: #19365b;
+      --blue: #4778bd;
+      --teal: #299b87;
+      --orange: #d99b35;
+      --ink: #243247;
+      --muted: #66758a;
+      --line: #dfe6ee;
+      --paper: #f4f7fb;
+      --white: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .dashboard { max-width: 1440px; margin: 0 auto; padding: 26px; }
+    header {
+      background: var(--navy);
+      color: white;
+      padding: 28px 30px;
+      border-radius: 16px;
+      margin-bottom: 18px;
+    }
+    header h1 { margin: 0 0 8px; font-size: clamp(1.55rem, 3vw, 2.25rem); }
+    header p { margin: 0; color: #dce8f6; line-height: 1.5; }
+    .source { margin-top: 12px; font-size: .82rem; color: #c4d4e8; }
+    .filters, .card, .kpi {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 13px;
+    }
+    .filters {
+      padding: 16px 18px;
+      display: flex;
+      align-items: end;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .filter { display: flex; flex-direction: column; gap: 6px; min-width: 180px; }
+    label { font-size: .83rem; font-weight: 650; color: var(--muted); }
+    select, button {
+      border: 1px solid #cbd5e1;
+      background: white;
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 10px 12px;
+      font: inherit;
+    }
+    button { cursor: pointer; }
+    button:hover { background: #edf3fa; }
+    .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
+    .kpi { padding: 17px 19px; }
+    .kpi .label { font-size: .82rem; color: var(--muted); margin-bottom: 9px; }
+    .kpi .value { font-size: clamp(1.4rem, 2.8vw, 2rem); font-weight: 750; letter-spacing: -.03em; color: var(--navy); }
+    .kpi .note { font-size: .78rem; color: var(--muted); margin-top: 5px; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .card { padding: 19px; min-width: 0; }
+    .card h2 { font-size: 1.05rem; margin: 0 0 5px; }
+    .subtitle { font-size: .84rem; color: var(--muted); line-height: 1.45; margin-bottom: 12px; }
+    .chart { width: 100%; overflow-x: auto; }
+    .chart svg { display: block; max-width: 100%; height: auto; }
+    .insight { border-left: 4px solid var(--teal); padding: 10px 12px; background: #f0faf7; border-radius: 0 8px 8px 0; margin-top: 10px; font-size: .9rem; line-height: 1.5; }
+    .story { margin-top: 18px; }
+    .story-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+    .story-item { background: #f7f9fc; border: 1px solid var(--line); padding: 14px; border-radius: 10px; }
+    .story-item h3 { margin: 0 0 8px; color: var(--navy); font-size: .92rem; }
+    .story-item p { margin: 0; font-size: .87rem; line-height: 1.55; color: #435269; }
+    .footnote { color: var(--muted); font-size: .78rem; line-height: 1.5; margin: 18px 2px 0; }
+    .error { display:none; background:#fff2f0; color:#9f2d20; border:1px solid #f2c4bf; padding:12px 14px; border-radius:9px; margin-bottom:15px; }
+    .empty { color: var(--muted); font-size: .9rem; padding: 30px 8px; text-align:center; }
+    @media (max-width: 900px) {
+      .dashboard { padding: 14px; }
+      .kpis { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .grid { grid-template-columns: 1fr; }
+      .story-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    }
+    @media (max-width: 520px) {
+      .kpi { padding: 13px; }
+      .story-grid { grid-template-columns: 1fr; }
+      header { padding: 22px 20px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="dashboard">
+    <header>
+      <h1>Proyecto Final - Visualización de Datos</h1>
+      <p>¿Cómo se relacionan los hábitos de estudio, el sueño y el uso de dispositivos digitales con la productividad?</p>      
+    </header>
+
+    <div id="error" class="error" role="alert"></div>
+
+    <section class="filters" aria-label="Filtros del dashboard">
+      <div class="filter">
+        <label for="genderFilter">Género</label>
+        <select id="genderFilter"><option value="Todos">Todos</option></select>
+      </div>
+      <div class="filter">
+        <label for="stressFilter">Nivel de estrés</label>
+        <select id="stressFilter"><option value="Todos">Todos</option></select>
+      </div>
+      <div class="filter">
+        <label for="phoneFilter">Nivel de uso del teléfono</label>
+        <select id="phoneFilter">
+          <option value="Todos">Todos</option>
+          <option value="Bajo">Bajo</option>
+          <option value="Medio">Medio</option>
+          <option value="Alto">Alto</option>
+        </select>
+      </div>
+      <button id="resetFilters" type="button">Restablecer filtros</button>
+    </section>
+
+    <section class="kpis" aria-label="Indicadores principales">
+      <div class="kpi"><div class="label">Estudiantes filtrados</div><div class="value" id="kpiCount">—</div><div class="note">Registros visibles</div></div>
+      <div class="kpi"><div class="label">Productividad media</div><div class="value" id="kpiMean">—</div><div class="note">Puntuación promedio</div></div>
+      <div class="kpi"><div class="label">Horas de estudio</div><div class="value" id="kpiStudy">—</div><div class="note">Promedio por día</div></div>
+      <div class="kpi"><div class="label">Horas de sueño</div><div class="value" id="kpiSleep">—</div><div class="note">Promedio por día</div></div>
+    </section>
+
+    <section class="grid">
+      <article class="card">
+        <h2>1. Horas de estudio y productividad</h2>
+        <div class="subtitle">Cada punto representa un estudiante. Pasa el cursor para consultar sus datos; no se muestra línea de tendencia.</div>
+        <div class="chart" id="scatterStudy"></div>
+        <div class="insight" id="studyInsight">La gráfica mostrará la relación entre las horas de estudio y la puntuación de productividad.</div>
+      </article>
+      <article class="card">
+        <h2>2. Horas de sueño y productividad</h2>
+        <div class="subtitle">Consulta la distribución de los registros de sueño y productividad, sin línea de tendencia.</div>
+        <div class="chart" id="scatterSleep"></div>
+        <div class="insight">Interpreta el patrón como una asociación observada; no demuestra que dormir más cause mayor productividad.</div>
+      </article>
+      <article class="card">
+        <h2>3. Distribución de productividad</h2>
+        <div class="subtitle">La distribución permite identificar dónde se concentran las puntuaciones.</div>
+        <div class="chart" id="histogram"></div>
+        <div class="insight" id="distributionInsight">La media y la mediana se calcularán con los registros filtrados.</div>
+      </article>
+      <article class="card">
+        <h2>4. Productividad según uso del teléfono</h2>
+        <div class="subtitle">Compara la distribución de productividad entre grupos de uso bajo, medio y alto.</div>
+        <div class="chart" id="phoneChart"></div>
+        <div class="insight">Los grupos se definen mediante terciles del uso del teléfono dentro del conjunto de datos cargado. La comparación muestra asociación, no causalidad.</div>
+      </article>
+      
+    </section>  
+    
+  </main>
+
+  <script type="module">
+    import * as Plot from "https://cdn.jsdelivr.net/npm/@observablehq/plot@0.6/+esm";
+    import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7/+esm";
+
+    const CSV_URL = "./student_productivity_distraction_dataset_20000.csv";
+    const FIELD_ALIASES = {
+      gender: ["gender", "genero", "género"],
+      study: ["study_hours_per_day", "study_hours", "hours_studied"],
+      sleep: ["sleep_hours", "hours_of_sleep", "sleep_hours_per_day"],
+      phone: ["phone_usage_hours", "phone_hours", "daily_phone_usage"],
+      stress: ["stress_level", "stress"],
+      productivity: ["productivity_score", "productivity", "productivityscore"],
+      student: ["student_id", "student", "id"]
+    };
+
+    const $ = (id) => document.getElementById(id);
+    let allData = [];
+    let phoneCut1 = NaN;
+    let phoneCut2 = NaN;
+
+    function normalizeKey(s) {
+      return String(s ?? "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+    }
+    function resolveColumns(columns) {
+      const normalized = new Map(columns.map(c => [normalizeKey(c), c]));
+      const result = {};
+      for (const [key, aliases] of Object.entries(FIELD_ALIASES)) {
+        result[key] = aliases.map(a => normalized.get(normalizeKey(a))).find(Boolean) ?? null;
+      }
+      const missing = ["study", "sleep", "phone", "stress", "productivity"].filter(k => !result[k]);
+      if (missing.length) {
+        throw new Error("No se encontraron las columnas requeridas: " + missing.join(", ") +
+          ". Revisa los nombres de columnas del CSV y ajusta FIELD_ALIASES en el código.");
+      }
+      return result;
+    }
+    function num(v) {
+      if (v == null || String(v).trim() === "") return NaN;
+      const n = Number(String(v).replace(",", "."));
+      return Number.isFinite(n) ? n : NaN;
+    }
+    function mean(arr, key) {
+      const values = arr.map(d => d[key]).filter(Number.isFinite);
+      return values.length ? d3.mean(values) : NaN;
+    }
+    function median(arr, key) {
+      const values = arr.map(d => d[key]).filter(Number.isFinite);
+      return values.length ? d3.median(values) : NaN;
+    }
+    function fmt(v, digits = 2) {
+      return Number.isFinite(v) ? v.toLocaleString("es-MX", {maximumFractionDigits: digits, minimumFractionDigits: digits}) : "—";
+    }
+    function showError(message) {
+      const box = $("error");
+      box.style.display = "block";
+      box.textContent = message;
+    }
+    function phoneGroup(v) {
+      if (!Number.isFinite(v)) return "Sin dato";
+      if (v <= phoneCut1) return "Bajo";
+      if (v <= phoneCut2) return "Medio";
+      return "Alto";
+    }
+    function currentData() {
+      const gender = $("genderFilter").value;
+      const stress = $("stressFilter").value;
+      const phone = $("phoneFilter").value;
+      return allData.filter(d =>
+        (gender === "Todos" || d.gender === gender) &&
+        (stress === "Todos" || String(d.stress) === stress) &&
+        (phone === "Todos" || phoneGroup(d.phone) === phone)
+      );
+    }
+    function chartBase(width) {
+      return {width, height: 300, marginTop: 14, marginRight: 22, marginBottom: 48, marginLeft: 56,
+        style: {background: "white", color: "#435269", fontSize: "12px"}};
+    }
+    function render() {
+      if (!allData.length) return;
+      const data = currentData();
+      $("kpiCount").textContent = data.length.toLocaleString("es-MX");
+      $("kpiMean").textContent = fmt(mean(data, "productivity"));
+      $("kpiStudy").textContent = Number.isFinite(mean(data, "study")) ? fmt(mean(data, "study")) + " h" : "—";
+      $("kpiSleep").textContent = Number.isFinite(mean(data, "sleep")) ? fmt(mean(data, "sleep")) + " h" : "—";
+
+      const studyRows = data.filter(d => Number.isFinite(d.study) && Number.isFinite(d.productivity));
+      const sleepRows = data.filter(d => Number.isFinite(d.sleep) && Number.isFinite(d.productivity));
+      const productRows = data.filter(d => Number.isFinite(d.productivity));
+      const width = Math.max(320, Math.min(760, $("scatterStudy").clientWidth || 560));
+
+      $("studyInsight").textContent =
+        "Interpreta el patrón como una asociación observada; no demuestra que estudiar más cause mayor productividad..";        
+
+      const studyPlot = Plot.plot({
+        ...chartBase(width),
+        // Márgenes ampliados para que la etiqueta del eje Y no se empalme.
+        marginTop: 25,
+        marginLeft: 88,
+        marginBottom: 55,
+        marginRight: 20,
+        x: {label: "Horas de estudio por día", grid: true},
+        y: {label: "Puntuación de productividad", grid: true, labelArrow: false},
+        marks: [
+          Plot.dot(studyRows, {
+            x: "study", y: "productivity", r: 2.1, fill: "#4778bd", fillOpacity: 0.32,
+            title: d => `Estudiante: ${d.student ?? "No disponible"}\nEstudio: ${fmt(d.study)} h\nProductividad: ${fmt(d.productivity)}\nSueño: ${fmt(d.sleep)} h\nTeléfono: ${fmt(d.phone)} h`
+          })
+        ]
+      });
+      $("scatterStudy").replaceChildren(studyPlot);
+
+      const pMean = mean(productRows, "productivity");
+      const pMedian = median(productRows, "productivity");
+      $("distributionInsight").textContent = `Media (línea roja continua): ${fmt(pMean)} · Mediana (línea verde discontinua): ${fmt(pMedian)}. Estos valores se recalculan según los filtros seleccionados.`;
+      const hist = Plot.plot({
+        ...chartBase(width),
+        x: {label: "Puntuación de productividad", grid: true},
+        y: {label: "Número de estudiantes", grid: true},
+        marks: [
+          Plot.rectY(productRows, Plot.binX({y: "count"}, {x: "productivity", thresholds: 24, fill: "#4778bd", inset: 0.7})),
+          // Media: línea roja más gruesa y continua.
+          Plot.ruleX([pMean], {
+            stroke: "#c62828",
+            strokeWidth: 4,
+            strokeOpacity: 1
+          }),
+          // Mediana: línea verde gruesa y discontinua.
+          Plot.ruleX([pMedian], {
+            stroke: "#087f5b",
+            strokeWidth: 4,
+            strokeOpacity: 1,
+            strokeDasharray: "8,4"
+          })
+        ]
+      });
+      $("histogram").replaceChildren(hist);
+
+      const groups = ["Bajo", "Medio", "Alto"];
+      const phoneRows = data.filter(d => Number.isFinite(d.phone) && Number.isFinite(d.productivity))
+        .map(d => ({...d, phoneGroup: phoneGroup(d.phone)}));
+      const boxPlot = Plot.plot({
+        ...chartBase(width),
+        // Estos márgenes se definen después de chartBase para que no sean sobrescritos.
+        marginTop: 28,
+        marginLeft: 88,
+        marginBottom: 58,
+        x: {label: "Nivel de uso del teléfono", domain: groups},
+        y: {
+          label: "Puntuación de productividad",
+          grid: true,
+          labelArrow: false
+        },
+        color: {domain: groups, range: ["#299b87", "#d99b35", "#d96c6c"], legend: false},
+        marks: [
+          Plot.boxY(phoneRows, {
+          x: "phoneGroup",
+          y: "productivity",
+          fill: "phoneGroup",
+          fillOpacity: 0.75,
+          stroke: "#53657b",
+          // Evita activar tooltips en las partes internas del boxplot al mismo tiempo.
+          // El atributo title ofrece una sola ayuda emergente al pasar el cursor.
+          title: d => `Nivel de uso del teléfono: ${d.phoneGroup}\\nPuntuación de productividad: ${Number(d.productivity).toFixed(2)}`
+        })
+        ]
+      });
+      $("phoneChart").replaceChildren(boxPlot);
+
+      
+      const sleepPlot = Plot.plot({
+        ...chartBase(width),
+        // Usar el mismo margen que en la gráfica 1 para evitar el traslape.
+        marginTop: 25,
+        marginLeft: 88,
+        marginBottom: 55,
+        marginRight: 20,
+        x: {label: "Horas de sueño por día", grid: true},
+        y: {label: "Puntuación de productividad", grid: true, labelArrow: false},
+        marks: [
+          Plot.dot(sleepRows, {
+            x: "sleep", y: "productivity", r: 2.1, fill: "#299b87", fillOpacity: 0.32,
+            title: d => `Estudiante: ${d.student ?? "No disponible"}\nSueño: ${fmt(d.sleep)} h\nProductividad: ${fmt(d.productivity)}`
+          })
+        ]
+      });
+      $("scatterSleep").replaceChildren(sleepPlot);
+      $("scatterSleep").setAttribute("aria-label", "Gráfica de horas de sueño y productividad; sin línea de tendencia ni coeficiente de correlación");
+    }
+
+    async function init() {
+      try {
+        const response = await fetch(CSV_URL);
+        if (!response.ok) throw new Error(`No se pudo cargar ${CSV_URL} (HTTP ${response.status}). Coloca el CSV junto al archivo HTML y abre el proyecto mediante un servidor local.`);
+        const raw = await response.text();
+        const parsed = d3.csvParse(raw);
+        if (!parsed.length) throw new Error("El CSV no contiene registros.");
+        const cols = resolveColumns(parsed.columns);
+        allData = parsed.map((r, i) => ({
+          student: cols.student ? r[cols.student] : i + 1,
+          gender: cols.gender ? (r[cols.gender] || "Sin dato") : "No disponible",
+          study: num(r[cols.study]),
+          sleep: num(r[cols.sleep]),
+          phone: num(r[cols.phone]),
+          stress: r[cols.stress] == null || r[cols.stress] === "" ? "Sin dato" : r[cols.stress],
+          productivity: num(r[cols.productivity])
+        })).filter(d => Number.isFinite(d.productivity));
+
+        const phoneVals = allData.map(d => d.phone).filter(Number.isFinite).sort(d3.ascending);
+        phoneCut1 = d3.quantile(phoneVals, 1/3);
+        phoneCut2 = d3.quantile(phoneVals, 2/3);
+
+        const genders = [...new Set(allData.map(d => d.gender))].sort(d3.ascending);
+        const stresses = [...new Set(allData.map(d => String(d.stress)))].sort((a,b) => Number(a)-Number(b) || d3.ascending(a,b));
+        for (const value of genders) $("genderFilter").add(new Option(value, value));
+        for (const value of stresses) $("stressFilter").add(new Option(value, value));
+
+        ["genderFilter", "stressFilter", "phoneFilter"].forEach(id => $(id).addEventListener("change", render));
+        $("resetFilters").addEventListener("click", () => {
+          $("genderFilter").value = "Todos";
+          $("stressFilter").value = "Todos";
+          $("phoneFilter").value = "Todos";
+          render();
+        });
+        render();
+        window.addEventListener("resize", () => render());
+      } catch (err) {
+        console.error(err);
+        showError(err.message || "Ocurrió un error al cargar los datos.");
+      }
+    }
+    init();
+  </script>
+</body>
+</html>
